@@ -34,3 +34,19 @@ type FileHeader struct {
 	/// </summary>
 	Characteristics       uint16
 }
+
+//determines if a PE is based around 32x architecture.
+func (fileHeader *FileHeader) Is32Bit() bool {
+	const imageFile32BitMachine = uint16(0x0100)
+	return (imageFile32BitMachine & fileHeader.Characteristics) == imageFile32BitMachine
+}
+
+//determines if a PE is a DLL.
+func (fileHeader *FileHeader) IsDll() bool {
+	return (fileHeader.Characteristics & uint16(0x2000)) > 0
+}
+
+//determines if a PE is a valid EXE
+func (fileHeader *FileHeader) IsExe() bool {
+	return (fileHeader.Characteristics & uint16(2)) > 0
+}

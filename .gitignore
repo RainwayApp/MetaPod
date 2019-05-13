@@ -1,2 +1,4 @@
 bin
 .idea
+metapod/pkg
+.DS_Store

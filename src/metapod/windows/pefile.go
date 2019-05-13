@@ -19,22 +19,6 @@ const (
 	certificateTableIndex = 4
 )
 
-//determines if a PE is a DLL.
-func isDll(fileHeader *structs.FileHeader) bool {
-   return (fileHeader.Characteristics & uint16(0x2000)) > 0
-}
-
-//determines if a PE is based around 32x architecture.
-func is32Bit(fileHeader *structs.FileHeader) bool {
-	const imageFile32BitMachine = uint16(0x0100)
-	return (imageFile32BitMachine & fileHeader.Characteristics) == imageFile32BitMachine
-}
-
-//determines if a PE is a valid EXE
-func isExe(fileHeader *structs.FileHeader) bool {
-	return (fileHeader.Characteristics & uint16(2)) > 0
-}
-
 //Takes a given input file and creates a Portable Executable wrapper.
 //See the getAttributes documentation for more information.
 func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, error) {
@@ -171,17 +155,17 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err error) {
 		return
 	}
 
-	if !isExe(&fileHeader) {
+	if !fileHeader.IsExe() {
 		err = errors.New("Input file is not a valid Portable Executable.")
 		return
 	}
 
-	if isDll(&fileHeader) {
+	if fileHeader.IsDll() {
 		err = errors.New("Template file cannot be a DLL")
 		return
 	}
 
-	if !is32Bit(&fileHeader) {
+	if !fileHeader.Is32Bit() {
 		err = errors.New("Template executable must be 32x.")
 		return
 	}
