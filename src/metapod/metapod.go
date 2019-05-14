@@ -13,24 +13,21 @@ import (
 //Once complete, it returns a byte array containing the new Portable Executable.
 //If the error code is greater than zero, an issue was encountered.
 //Use GetErrorCodeMessage to retrieve the error message.
-func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.Pointer, errorCode *C.int) C.int {
-	slice := &reflect.SliceHeader{Data: uintptr(buffer), Len: int(count), Cap: int(count)}
-	stub := *(*[]byte)(unsafe.Pointer(slice))
+func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.Pointer, outputCount *C.int) C.int {
+	stub := C.GoBytes(buffer, count)
 	portableExecutable, err := windows.GetPortableExecutable(stub)
 	if err > 0 {
-		*errorCode = C.int(err)
-		return 0
+		return C.int(err)
 	}
 	var payloadContents = []byte(C.GoString(payload))
 	var targetExecutable = windows.TargetExecutable{*portableExecutable}
 	contents, err := targetExecutable.CreateFromTemplate(payloadContents)
 	if err > 0 {
-		*errorCode = C.int(err)
-		return 0
+		return C.int(err)
 	}
 	*output = C.CBytes(contents)
-	*errorCode = C.int(0)
-	return C.int(len(contents))
+	*outputCount = C.int(len(contents))
+	return 0
 }
 
 //export Open
@@ -38,27 +35,25 @@ func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.
 //If found, the payload will be returned as a string.
 //If the error code is greater than zero, an issue was encountered.
 //Use GetErrorCodeMessage to retrieve the error message.
-func Open( pe unsafe.Pointer, count C.int, errorCode *C.int) *C.char {
-	slice := &reflect.SliceHeader{Data: uintptr(pe), Len: int(count), Cap: int(count)}
-	buffer := *(*[]byte)(unsafe.Pointer(slice))
+func Open(pe unsafe.Pointer, count C.int, payload *C.char payloadCount *C.int) C.int {
+	*payloadCount = C.int(0);
+	buffer := C.GoBytes(pe, count)
 	portableExecutable, err := windows.GetPortableExecutable(buffer)
 	if err > 0 {
-		*errorCode = C.int(err)
-		return C.CString("")
+		return C.int(err)
 	}
 	var targetExecutable = windows.TargetExecutable{*portableExecutable}
 	_, err, payload := targetExecutable.GetPayload()
 	if (err > 0) {
-		*errorCode = C.int(err)
-		return C.CString("")
+		return C.int(err)
 	}
 	if payload != nil {
-		*errorCode = C.int(0)
-		return C.CString(string(payload))
+		*payload = C.CString(string(payload))
+		*payloadCount = C.int(len(payload))
+		return C.Int(0)
 	} else {
-		*errorCode = C.int(1050)
+		return C.int(1050)
 	}
-	return C.CString("")
 }
 
 //export GetErrorCodeMessage
