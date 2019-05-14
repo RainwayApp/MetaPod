@@ -32,17 +32,24 @@ namespace MetaPod_Net
             var inputBytes = await File.ReadAllBytesAsync(inputFile);
             var payloadBytes = Encoding.UTF8.GetBytes(payload);
             var output = IntPtr.Zero;
-            var errorCode = 0;
-            var outputSize  = NativeWrapper.Create(inputBytes, inputBytes.Length, payloadBytes, ref output, ref errorCode);
-            if (errorCode > 0)
+            try
             {
-                throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                var errorCode = 0;
+                var outputSize  = NativeWrapper.Create(inputBytes, inputBytes.Length, payloadBytes, ref output, ref errorCode);
+                if (errorCode > 0)
+                {
+                    throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                }
+                var outputBuffer = new byte[outputSize];
+                Marshal.Copy(output, outputBuffer, 0, outputSize);
+                using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, outputBuffer.Length, true))
+                {
+                    await fs.WriteAsync(outputBuffer, 0, outputBuffer.Length);
+                }
             }
-            var outputBuffer = new byte[outputSize];
-            Marshal.Copy(output, outputBuffer, 0, outputSize);
-            using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, outputBuffer.Length, true))
+            finally
             {
-                await fs.WriteAsync(outputBuffer, 0, outputBuffer.Length);
+                Marshal.FreeHGlobal(output);
             }
         }
 
@@ -67,15 +74,22 @@ namespace MetaPod_Net
             }
             var payloadBytes = Encoding.UTF8.GetBytes(payload);
             var output = IntPtr.Zero;
-            var errorCode = 0;
-            var outputSize  = NativeWrapper.Create(inputFile.ToArray(), inputFile.Length, payloadBytes, ref output, ref errorCode);
-            if (errorCode > 0)
+            try
             {
-                throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                var errorCode = 0;
+                var outputSize  = NativeWrapper.Create(inputFile.ToArray(), inputFile.Length, payloadBytes, ref output, ref errorCode);
+                if (errorCode > 0)
+                {
+                    throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                }
+                var outputBuffer = new byte[outputSize];
+                Marshal.Copy(output, outputBuffer, 0, outputSize);
+                return new Span<byte>(outputBuffer);
             }
-            var outputBuffer = new byte[outputSize];
-            Marshal.Copy(output, outputBuffer, 0, outputSize);
-            return new Span<byte>(outputBuffer);
+            finally
+            {
+                Marshal.FreeHGlobal(output);
+            }
         }
 
         /// <summary>
@@ -93,13 +107,23 @@ namespace MetaPod_Net
                 throw new FileNotFoundException($"Unable to locate {inputFile}.");
             }
             var inputBytes = await File.ReadAllBytesAsync(inputFile);
+            var output = IntPtr.Zero;
             var errorCode = 0;
-            var payload = NativeWrapper.Open(inputBytes, inputBytes.Length, ref errorCode);
-            if (errorCode > 0)
+            try
             {
-                throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                var payloadSize = NativeWrapper.Open(inputBytes, inputFile.Length, ref output, ref errorCode);
+                if (errorCode > 0)
+                {
+                    throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                }
+                var byteArray = new byte[payloadSize];
+                Marshal.Copy(output, byteArray, 0, payloadSize);
+                return Encoding.UTF8.GetString(byteArray);
             }
-            return payload;
+            finally
+            {
+                Marshal.FreeHGlobal(output);
+            }
         }
 
         /// <summary>
@@ -110,13 +134,24 @@ namespace MetaPod_Net
         /// <returns>The MetaPod payload as a string.</returns>
         public static string Open(Span<byte> inputFile)
         {
+            var output = IntPtr.Zero;
             var errorCode = 0;
-            var payload = NativeWrapper.Open(inputFile.ToArray(), inputFile.Length, ref errorCode);
-            if (errorCode > 0)
+            
+            try
             {
-                throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                var payloadSize = NativeWrapper.Open(inputFile.ToArray(), inputFile.Length, ref output, ref errorCode);
+                if (errorCode > 0)
+                {
+                    throw new MetaPodException(GetErrorCodeMessage(errorCode));
+                }
+                var byteArray = new byte[payloadSize];
+                Marshal.Copy(output, byteArray, 0, payloadSize);
+                return Encoding.UTF8.GetString(byteArray);
             }
-            return payload;
+            finally
+            {
+                Marshal.FreeHGlobal(output);
+            }
         }
 
         /// <summary>
@@ -127,10 +162,17 @@ namespace MetaPod_Net
         private static string GetErrorCodeMessage(int errorCode)
         {
             var output = IntPtr.Zero;
-            var messageSize = NativeWrapper.GetErrorCodeMessage(errorCode, ref output);
-            var byteArray = new byte[messageSize];
-            Marshal.Copy(output, byteArray, 0, messageSize);
-            return Encoding.UTF8.GetString(byteArray);
+            try
+            {
+                var messageSize = NativeWrapper.GetErrorCodeMessage(errorCode, ref output);
+                var byteArray = new byte[messageSize];
+                Marshal.Copy(output, byteArray, 0, messageSize);
+                return Encoding.UTF8.GetString(byteArray);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(output);
+            }
         }
     }
 }
