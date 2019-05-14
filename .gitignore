@@ -3,3 +3,4 @@ bin
 metapod/pkg
 .DS_Store
 pkg
+wrappers/net/MetaPod-Net/obj

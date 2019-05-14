@@ -4,7 +4,6 @@ import "C"
 
 import (
 	"metapod/windows"
-	"reflect"
 	"unsafe"
 )
 
@@ -35,21 +34,21 @@ func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.
 //If found, the payload will be returned as a string.
 //If the error code is greater than zero, an issue was encountered.
 //Use GetErrorCodeMessage to retrieve the error message.
-func Open(pe unsafe.Pointer, count C.int, payload **C.char payloadCount *C.int) C.int {
+func Open(pe unsafe.Pointer, count C.int, payload **C.char, payloadCount *C.int) C.int {
 	buffer := C.GoBytes(pe, count)
 	portableExecutable, err := windows.GetPortableExecutable(buffer)
 	if err > 0 {
 		return C.int(err)
 	}
 	var targetExecutable = windows.TargetExecutable{*portableExecutable}
-	_, err, payload := targetExecutable.GetPayload()
-	if (err > 0) {
+	_, err, rawPayload := targetExecutable.GetPayload()
+	if err > 0 {
 		return C.int(err)
 	}
 	if payload != nil {
-		*payload = C.CString(string(payload))
-		*payloadCount = C.int(len(payload))
-		return C.Int(0)
+		*payload = C.CString(string(rawPayload))
+		*payloadCount = C.int(len(rawPayload))
+		return C.int(0)
 	} else {
 		return C.int(1050)
 	}
@@ -113,7 +112,7 @@ func GetErrorCodeMessage(code C.int, text **C.char) C.int {
 	}
 
     *text = C.CString(errorText)
-    return len(errorText)
+    return C.int(len(errorText))
 }
 
 //TODO 64-bit support
