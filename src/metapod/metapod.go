@@ -95,6 +95,8 @@ func GetErrorCodeMessage(code C.int, text **C.char) C.int {
 		errorText ="portable executable is malformed"
 	case 1021:
 		errorText ="reached EOF searching for the portable executable signature"
+	case 1020:
+		errorText = "the length of the input file is less than the PE offset"
 	case 1004:
 		errorText ="incorrect number of bytes reading ASN.1 length"
 	case 1005:
