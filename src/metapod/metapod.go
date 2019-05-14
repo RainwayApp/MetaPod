@@ -36,7 +36,6 @@ func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.
 //If the error code is greater than zero, an issue was encountered.
 //Use GetErrorCodeMessage to retrieve the error message.
 func Open(pe unsafe.Pointer, count C.int, payload *C.char payloadCount *C.int) C.int {
-	*payloadCount = C.int(0);
 	buffer := C.GoBytes(pe, count)
 	portableExecutable, err := windows.GetPortableExecutable(buffer)
 	if err > 0 {
