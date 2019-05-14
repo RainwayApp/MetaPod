@@ -3,9 +3,7 @@ package main
 import "C"
 
 import (
-	"fmt"
 	"metapod/windows"
-	"os"
 	"reflect"
 	"unsafe"
 )
@@ -13,50 +11,112 @@ import (
 //export Create
 //Creates a new executable containing the payload, based upon a given stub template.
 //Once complete, it returns a byte array containing the new Portable Executable.
-//TODO raise exceptions to the higher level langauge.
-func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.Pointer) C.int {
+//If the error code is greater than zero, an issue was encountered.
+//Use GetErrorCodeMessage to retrieve the error message.
+func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.Pointer, errorCode *C.int) C.int {
 	slice := &reflect.SliceHeader{Data: uintptr(buffer), Len: int(count), Cap: int(count)}
 	stub := *(*[]byte)(unsafe.Pointer(slice))
 	portableExecutable, err := windows.GetPortableExecutable(stub)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
+	if err > 0 {
+		*errorCode = C.int(err)
 		return 0
 	}
 	var payloadContents = []byte(C.GoString(payload))
 	var targetExecutable = windows.TargetExecutable{*portableExecutable}
 	contents, err := targetExecutable.CreateFromTemplate(payloadContents)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while setting superfluous certificate tag: %s\n", err)
+	if err > 0 {
+		*errorCode = C.int(err)
 		return 0
 	}
 	*output = C.CBytes(contents)
-
+	*errorCode = C.int(0)
 	return C.int(len(contents))
 }
 
 //export Open
 //Opens a portable executable file from a byte stream, seeking to find a payload certificate.
-//If found, the payload will be returned as a string -- otherwise an empty string is returned.
-func Open( pe unsafe.Pointer, count C.int) *C.char {
+//If found, the payload will be returned as a string.
+//If the error code is greater than zero, an issue was encountered.
+//Use GetErrorCodeMessage to retrieve the error message.
+func Open( pe unsafe.Pointer, count C.int, errorCode *C.int) *C.char {
 	slice := &reflect.SliceHeader{Data: uintptr(pe), Len: int(count), Cap: int(count)}
 	buffer := *(*[]byte)(unsafe.Pointer(slice))
 	portableExecutable, err := windows.GetPortableExecutable(buffer)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
+	if err > 0 {
+		*errorCode = C.int(err)
 		return C.CString("")
 	}
 	var targetExecutable = windows.TargetExecutable{*portableExecutable}
 	_, err, payload := targetExecutable.GetPayload()
-	if err == nil && payload != nil {
+	if (err > 0) {
+		*errorCode = C.int(err)
+		return C.CString("")
+	}
+	if payload != nil {
+		*errorCode = C.int(0)
 		return C.CString(string(payload))
+	} else {
+		*errorCode = C.int(1050)
 	}
 	return C.CString("")
 }
 
+//export GetErrorCodeMessage
+//Returns the human readable error message for a given error code.
+func GetErrorCodeMessage(code C.int) *C.char {
+	switch code {
+	case 1050:
+		return C.CString("unable to locate payload within input file")
+	case 1043:
+		return C.CString("the input file contains no certificates")
+	case 1042:
+		return C.CString("failed to marshal ASN.1 structure")
+	case 1041:
+		return C.CString("failed to create X509Certificate from provided templates")
+	case 1040:
+		return C.CString("failed to generate RSA keypair")
+	case 1033:
+		return C.CString("internal error calculating certificate data offset")
+	case 1032:
+		return C.CString("certificate table entry is not at the end of the file")
+	case 1031:
+		return C.CString("reached EOF calculating end of certificate entry")
+	case 1030:
+		return C.CString("portable executable lacks valid certificate data entry")
+	case 1029:
+		return C.CString("unable to read IMAGE_SECTION_HEADER. EOF?")
+	case 1028:
+		return C.CString("unable to read IMAGE_OPTIONAL_HEADER32")
+	case 1027:
+		return C.CString("input file must be 32-bit. 64-bit support planned")
+	case 1026:
+		return C.CString("input file cannot be a DLL")
+	case 1025:
+		return C.CString("input file is not a valid portable executable")
+	case 1024:
+		return C.CString("unable to read IMAGE_FILE_HEADER")
+	case 1023:
+		return C.CString("unable to locate portable executable file header")
+	case 1022:
+		return C.CString("portable executable is malformed")
+	case 1021:
+		return C.CString("reached EOF searching for the portable executable signature")
+	case 1004:
+		return C.CString("incorrect number of bytes reading ASN.1 length")
+	case 1005:
+		return C.CString("ASN.1 structure is incorrect")
+	case 1006:
+		return C.CString("unknown certificate type")
+	case 1007:
+		return C.CString("unknown certificate revision")
+	case 1008:
+		return C.CString("multiple attribute certificates found. unable to proceed.")
+	case 1009:
+		return C.CString("attribute certificate seems malformed")
+	default:
+		return C.CString("unknown error code.")
+	}
+}
 
-
-//TODO
-//proper error handling
-//refactor code some more
-//comment code
+//TODO 64-bit support
 func main() { }

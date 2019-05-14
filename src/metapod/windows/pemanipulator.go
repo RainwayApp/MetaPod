@@ -40,7 +40,7 @@ const (
 //CreateFromTemplate adds a superfluous certificate to a portable executable.
 //The appended data is "unverified" and does affect the PE's digital signature.
 //This means metadata of any kind can be added to a base executable.
-func (portableExecutable *TargetExecutable) CreateFromTemplate(payload []byte) (contents []byte, err error) {
+func (portableExecutable *TargetExecutable) CreateFromTemplate(payload []byte) (contents []byte, err int) {
 	cert, err, _ := portableExecutable.GetPayload()
 
 	//remove the previous payload if it already existed within the template
@@ -52,9 +52,9 @@ func (portableExecutable *TargetExecutable) CreateFromTemplate(payload []byte) (
 
 	notBefore := utils.ParseUnixTimeOrDie(notBeforeTime)
 	notAfter := utils.ParseUnixTimeOrDie(notAfterTime)
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, err
+	privateKey, rsaError := rsa.GenerateKey(rand.Reader, 2048)
+	if rsaError != nil {
+		return nil, 1040
 	}
 
 	//this certificate acts as our CA
@@ -97,21 +97,21 @@ func (portableExecutable *TargetExecutable) CreateFromTemplate(payload []byte) (
 	}
 
 	//creates a single X509Certificate (DER encoded).
-	derCert, err := x509.CreateCertificate(rand.Reader, &payloadCertificate, &issuerCertificate, &privateKey.PublicKey, privateKey)
-	if err != nil {
-		return nil, err
+	derCert, certError := x509.CreateCertificate(rand.Reader, &payloadCertificate, &issuerCertificate, &privateKey.PublicKey, privateKey)
+	if certError != nil {
+		return nil, 1041
 	}
 
 	portableExecutable.X509Certificate.PKCS7.Certificates = append(portableExecutable.X509Certificate.PKCS7.Certificates, asn1.RawValue{
 		FullBytes: derCert,
 	})
 
-	asn1Bytes, err := asn1.Marshal(*portableExecutable.X509Certificate)
-	if err != nil {
-		return nil, err
+	asn1Bytes, asnError := asn1.Marshal(*portableExecutable.X509Certificate)
+	if asnError != nil {
+		return nil, 1042
 	}
 
-	return portableExecutable.restructure(asn1Bytes, portableExecutable.AppendedTag), nil
+	return portableExecutable.restructure(asn1Bytes, portableExecutable.AppendedTag), 0
 }
 
 //This function takes the newly appended certificate (that has been serialized into an ASN.1 object)
@@ -139,23 +139,22 @@ func (portableExecutable *TargetExecutable) restructure(asn1Data, tag []byte) (c
 //Searches a portable executable for the Metapod OID.
 //If found, it will return the []value which can then be converted into a string.
 //The string is arbitrary, as any format can be included. So it is up to the host program to parse it.
-func (portableExecutable *TargetExecutable) GetPayload() (cert *x509.Certificate, err error, payload []byte) {
+func (portableExecutable *TargetExecutable) GetPayload() (cert *x509.Certificate, err int, payload []byte) {
 	n := len(portableExecutable.X509Certificate.PKCS7.Certificates)
 	if n == 0 {
-		return nil, nil, nil
+		return nil, 1043, nil
 	}
-
 	//A Metapod cert should always be the last one on the stack, however I've seen other languages flip the order.
 	//So because I "don't trust like that" we are going to loop and find it ourselves.
 	for _, der := range portableExecutable.X509Certificate.PKCS7.Certificates {
-		if cert, err = x509.ParseCertificate(der.FullBytes); err == nil {
+		if cert, certError := x509.ParseCertificate(der.FullBytes); certError == nil {
 			for _, ext := range cert.Extensions {
 				if !ext.Critical && ext.Id.Equal(metaPodOID) {
-					return cert, nil, ext.Value
+					return cert, 0, ext.Value
 				}
 			}
 		}
 	}
-	return nil, nil, nil
+	return nil, 0, nil
 }
 

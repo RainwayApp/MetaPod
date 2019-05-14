@@ -4,46 +4,43 @@ import (
 	"bytes"
 	"encoding/asn1"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"io"
 	"metapod/structs"
 	"unsafe"
 )
 
-
 // http://msdn.microsoft.com/en-us/library/ms920091.aspx.
 const (
-	certificateRevision = 0x200
-	certificateType     = 2
+	certificateRevision   = 0x200
+	certificateType       = 2
 	certificateTableIndex = 4
 )
 
 //Takes a given input file and creates a Portable Executable wrapper.
 //See the getAttributes documentation for more information.
-func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, error) {
+func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, int) {
 	offset, size, certSizeOffset, err := getAttributes(stub)
-	if err != nil {
-		return nil, errors.New("Error parsing headers: " + err.Error())
+	if err > 0 {
+		return nil, err
 	}
 	attributeCertificates := stub[offset : offset+size]
 	asn1Data, appendedTag, err := processAttributeCertificates(attributeCertificates)
-	if err != nil {
-		return nil, errors.New("Error parsing attribute certificate section: " + err.Error())
+	if err > 0 {
+		return nil, err
 	}
 
 	var signedData structs.X509Certificate
 	if _, err := asn1.Unmarshal(asn1Data, &signedData); err != nil {
-		return nil, errors.New("Error while parsing X509Certificate structure: " + err.Error())
+		return nil, 1010
 	}
 
-	der, err := asn1.Marshal(signedData)
-	if err != nil {
-		return nil, errors.New("Error while marshaling X509Certificate structure: " + err.Error())
+	der, errm := asn1.Marshal(signedData)
+	if errm != nil {
+		return nil, 1011
 	}
 
 	if !bytes.Equal(der, asn1Data) {
-		return nil, errors.New("ASN.1 marshaling test failed: " + err.Error())
+		return nil, 1012
 	}
 
 	return &structs.PortableExecutable{
@@ -53,14 +50,13 @@ func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, error) {
 		Asn1Data:        asn1Data,
 		AppendedTag:     appendedTag,
 		X509Certificate: &signedData,
-	}, nil
+	}, 0
 }
 
-
 // Parses the certificates section of a portable executable, returning the ASN.1 data.
-func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err error) {
+func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err int) {
 	if len(certs) < 8 {
-		err = errors.New("attribute certificate truncated")
+		err = 1009
 		return
 	}
 
@@ -72,24 +68,24 @@ func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err e
 	certificateType := binary.LittleEndian.Uint16(certs[6:8])
 
 	if int(certificateLength) != len(certs) {
-		err = errors.New("multiple attribute certificates found")
+		err = 1008
 		return
 	}
 
 	if revision != certificateRevision {
-		err = fmt.Errorf("unknown attribute certificate revision: %x", revision)
+		err = 1007
 		return
 	}
 
 	if certificateType != certificateType {
-		err = fmt.Errorf("unknown attribute certificate type: %d", certificateType)
+		err = 1006
 		return
 	}
 
 	asn1 = certs[8:]
 
 	if len(asn1) < 2 {
-		err = errors.New("ASN.1 structure truncated")
+		err = 1005
 		return
 	}
 
@@ -101,11 +97,11 @@ func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err e
 	} else {
 		numBytes := int(asn1[1] & 0x7f)
 		if numBytes == 0 || numBytes > 2 {
-			err = fmt.Errorf("bad number of bytes in ASN.1 length: %d", numBytes)
+			err = 1004
 			return
 		}
 		if len(asn1) < numBytes+2 {
-			err = errors.New("ASN.1 structure truncated")
+			err = 1005
 			return
 		}
 		asn1Length = int(asn1[2])
@@ -122,98 +118,99 @@ func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err e
 	return
 }
 
-
 //Validates an input file is a Portable Executable, meeting the baseline requirements.
 //The input file must be 32x, not a DLL, and a valid EXE.
 //Return  offset information about the certificate table.
-func getAttributes(stub []byte) (offset, size, sizeOffset int, err error) {
+func getAttributes(stub []byte) (offset, size, sizeOffset int, err int) {
 	// offsetOfPEHeaderOffset is the offset in the binary where the PE header is found.
 	const offsetOfPEHeaderOffset = 0x3c
 	if len(stub) < offsetOfPEHeaderOffset+4 {
-		err = errors.New("Portable Executable malformed.")
+		err = 1020
 		return
 	}
 
 	peOffset := int(binary.LittleEndian.Uint32(stub[offsetOfPEHeaderOffset:]))
 	if peOffset < 0 || peOffset+4 < peOffset {
-		err = errors.New("Overflowed searching for PE signature")
+		err = 1021
 		return
 	}
 	if len(stub) < peOffset+4 {
-		err = errors.New("Portable Executable malformed.")
+		err = 1020
 		return
 	}
 	pe := stub[peOffset:]
 	if !bytes.Equal(pe[:4], []byte{'P', 'E', 0, 0}) {
-		err = errors.New("PE header not found. Is this a Portable Executable?")
+		err = 1023
 		return
 	}
 
-	r := io.Reader(bytes.NewReader(pe[4:]))
+	reader := io.Reader(bytes.NewReader(pe[4:]))
 	var fileHeader structs.FileHeader
-	if err = binary.Read(r, binary.LittleEndian, &fileHeader); err != nil {
+	if readError := binary.Read(reader, binary.LittleEndian, &fileHeader); readError != nil {
+		err = 1024
 		return
 	}
 
 	if !fileHeader.IsExe() {
-		err = errors.New("Input file is not a valid Portable Executable.")
+		err = 1025
 		return
 	}
 
 	if fileHeader.IsDll() {
-		err = errors.New("Template file cannot be a DLL")
+		err = 1026
 		return
 	}
 
 	if !fileHeader.Is32Bit() {
-		err = errors.New("Template executable must be 32x.")
+		err = 1027
 		return
 	}
 
 	var press = int64(fileHeader.SizeOfOptionalHeader) + (int64(unsafe.Sizeof(structs.SectionHeader{})) * int64(fileHeader.NumberOfSections))
 
-	r = io.LimitReader(r, press)
+
+	reader = io.LimitReader(reader, press)
+
 	var optionalHeader structs.OptionalHeader32
-	if err = binary.Read(r, binary.LittleEndian, &optionalHeader); err != nil {
-		fmt.Println(unsafe.Sizeof(optionalHeader))
+	if readError := binary.Read(reader, binary.LittleEndian, &optionalHeader); readError != nil {
+		err = 1028
 		return
 	}
 
 	var sectionHeaders = make([]structs.SectionHeader, fileHeader.NumberOfSections)
 
-
 	for headerNumber := 0; headerNumber < len(sectionHeaders); headerNumber++ {
 
 		var sectionHeader structs.SectionHeader
-		if err = binary.Read(r, binary.LittleEndian, &sectionHeader); err != nil {
+		if readError := binary.Read(reader, binary.LittleEndian, &sectionHeader); readError != nil {
+			err = 1029
 			return
 		}
 		sectionHeaders[headerNumber] = sectionHeader
 	}
 
 	if optionalHeader.CertificateTable.VirtualAddress == 0 {
-		err = fmt.Errorf("Portable Executable does not have certificate data")
+		err = 1030
 		return
 	}
 
 	var certEntryEnd = optionalHeader.CertificateTable.VirtualAddress + optionalHeader.CertificateTable.Size
 	if certEntryEnd < optionalHeader.CertificateTable.VirtualAddress {
 
-		err = fmt.Errorf("Overflow while calculating end of certificate entry")
+		err = 1031
 		return
 	}
 	if certEntryEnd != uint32(len(stub)) {
-		err = fmt.Errorf("Certificiate entry is not at end of file: {certEntryEnd} vs { fileReader.BaseStream.Length}")
+		err = 1032
 		return
 	}
 
-
-	 offset = int(optionalHeader.CertificateTable.VirtualAddress)
+	offset = int(optionalHeader.CertificateTable.VirtualAddress)
 	size = int(optionalHeader.CertificateTable.Size)
-	sizeOffset = int(peOffset) + 4 + int(unsafe.Sizeof(structs.FileHeader{})) + int(fileHeader.SizeOfOptionalHeader) - 8 * (int(optionalHeader.NumberOfRvaAndSizes) - certificateTableIndex) + 4
+	sizeOffset = int(peOffset) + 4 + int(unsafe.Sizeof(structs.FileHeader{})) + int(fileHeader.SizeOfOptionalHeader) - 8*(int(optionalHeader.NumberOfRvaAndSizes)-certificateTableIndex) + 4
 
-	 if binary.LittleEndian.Uint32(stub[sizeOffset:]) != optionalHeader.CertificateTable.Size {
-		err = errors.New("Internal error when calculating certificate data size offset.")
+	if binary.LittleEndian.Uint32(stub[sizeOffset:]) != optionalHeader.CertificateTable.Size {
+		err = 1033
 		return
 	}
 
