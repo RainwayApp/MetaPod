@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.0</TargetFramework>
+        <RootNamespace>MetaPod_Net</RootNamespace>
+        <Configurations>Release;Debug</Configurations>
+        <Platforms>x64</Platforms>
+        <Title>MetaPod-Net</Title>
+        <Authors>Rainway, Inc.</Authors>
+        <PackageProjectUrl>https://rainway.com</PackageProjectUrl>
+        <PackageIconUrl>https://camo.githubusercontent.com/ce1ca2deee366c05f82625de7455dba0ab946fda/68747470733a2f2f692e696d6775722e636f6d2f675164465139332e706e67</PackageIconUrl>
+        <RepositoryUrl>https://github.com/RainwayApp/MetaPod</RepositoryUrl>
+    </PropertyGroup>
+
+</Project>
