@@ -10,38 +10,37 @@ namespace MetaPod_Net
         /// Currently only 64 bit is supported.
         /// </summary>
         private const string LibraryName = "metapod64.so";
-
-   
-       /// <summary>
-       /// Opens a MetaPod executable for the purpose of reading its payload.
-       /// </summary>
-       /// <param name="portableExecutalbe"></param>
-       /// <param name="length"></param>
-       /// <param name="payload"></param>
-       /// <param name="errorCode"></param>
-       /// <returns></returns>
-        [DllImport(LibraryName, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int Open(byte[] portableExecutalbe, int length, ref IntPtr payload, ref int errorCode);
-
-        /// <summary>
-        /// Returns the human-readable string for an error code.
-        /// </summary>
-        /// <param name="errorCode"></param>
-        /// <param name="errorMessage"></param>
-        /// <returns></returns>
-         [DllImport(LibraryName, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-         internal static extern int GetErrorCodeMessage(int errorCode, ref IntPtr errorMessage);
         
         /// <summary>
-        /// Creates a MetaPod portable executable from a base template. The template must already be digitally signed. 
+        /// Opens a MetaPod executable for the purpose of reading its payload.
         /// </summary>
-        /// <param name="template"></param>
-        /// <param name="length"></param>
-        /// <param name="payload"></param>
-        /// <param name="output"></param>
-        /// <param name="errorCode"></param>
+        /// <param name="portableExecutable">The MetaPod portable executable buffer.</param>
+        /// <param name="portableExecutableSize">The total size of the MetaPod executable.</param>
+        /// <param name="payload">A managed pointer to the payload results.</param>
+        /// <param name="payloadSize">The length of the payload string.</param>
         /// <returns></returns>
         [DllImport(LibraryName, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int Create(byte[] template, int length, byte[] payload, ref IntPtr output, ref int errorCode);
+        internal static extern int Open(byte[] portableExecutable, int portableExecutableSize, ref IntPtr payload, ref int payloadSize);
+
+        /// <summary>
+        /// Grabs the human-readable error message from an error code.
+        /// </summary>
+        /// <param name="errorCode">The target error code.</param>
+        /// <param name="errorMessage">The human-readable message pointer.</param>
+        /// <returns></returns>
+        [DllImport(LibraryName, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int GetErrorCodeMessage(int errorCode, ref IntPtr errorMessage);
+        
+        /// <summary>
+        /// Creates a MetaPod portable executable from a base template. The template must already be digitally signed.
+        /// </summary>
+        /// <param name="template">The input/template portable executable.</param>
+        /// <param name="templateSize">The total size of the input file.</param>
+        /// <param name="payload">The payload message.</param>
+        /// <param name="output">A managed pointer to the portable executable buffer.</param>
+        /// <param name="outputSize">The total bytes of the final portable executable.</param>
+        /// <returns>The error code, if any.</returns>
+        [DllImport(LibraryName, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int Create(byte[] template, int templateSize, byte[] payload, ref IntPtr output, ref int outputSize);
     }
 }
