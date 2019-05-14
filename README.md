@@ -11,17 +11,12 @@ MetaPod is a cross-platform library that allows you to generate personalized por
 - Gain invaluable insight by seeing the real conversion users who visit your site and download an application.
 - Insert metadata that allows software to self-configure. 
 
-## Getting Started
-
-TODO
-
 ## Language Support
 - Go
 - C#
 
-Want to help expand this list? You can contribute by writing a wrapper for the C library. 
-
+Want to help expand this list? You can contribute by writing a wrapper for the C library.
 
 ## Requirements 
-- Your stub application must be x32. x64 support is planned.
+- Your stub application must be 32-bit.
 - The stub application must already have a valid digital signature. 
