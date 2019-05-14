@@ -11,16 +11,17 @@ namespace MetaPod_Net
         /// </summary>
         private const string LibraryName = "metapod64.so";
 
-        /// <summary>
-        /// Opens a MetaPod executable for the purpose of reading its payload.
-        /// </summary>
-        /// <param name="portableExecutalbe"></param>
-        /// <param name="length"></param>
-        /// <param name="errorCode"></param>
-        /// <returns></returns>
+   
+       /// <summary>
+       /// Opens a MetaPod executable for the purpose of reading its payload.
+       /// </summary>
+       /// <param name="portableExecutalbe"></param>
+       /// <param name="length"></param>
+       /// <param name="payload"></param>
+       /// <param name="errorCode"></param>
+       /// <returns></returns>
         [DllImport(LibraryName, CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-        [return: MarshalAs(UnmanagedType.LPStr)]
-         internal static extern string Open(byte[] portableExecutalbe, int length, ref int errorCode);
+        internal static extern int Open(byte[] portableExecutalbe, int length, ref IntPtr payload, ref int errorCode);
 
         /// <summary>
         /// Returns the human-readable string for an error code.
