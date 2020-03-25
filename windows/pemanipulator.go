@@ -9,8 +9,8 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/RainwayApp/metapod/src/metapod/structs"
-	"github.com/RainwayApp/metapod/src/metapod/utils"
+	"github.com/RainwayApp/metapod/structs"
+	"github.com/RainwayApp/metapod/utils"
 )
 
 //You cannot extend types defined in other packages, so we need to wrap it here.

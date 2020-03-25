@@ -5,7 +5,7 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/RainwayApp/metapod/src/metapod/windows"
+	"github.com/RainwayApp/metapod/windows"
 )
 
 //export Create

@@ -7,7 +7,7 @@ import (
 	"io"
 	"unsafe"
 
-	"github.com/RainwayApp/metapod/src/metapod/structs"
+	"github.com/RainwayApp/metapod/structs"
 )
 
 // http://msdn.microsoft.com/en-us/library/ms920091.aspx.
