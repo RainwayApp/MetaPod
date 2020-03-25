@@ -1,4 +1,4 @@
-package clib
+package main
 
 import "C"
 
@@ -6,7 +6,7 @@ import (
 	"unsafe"
 
 	"github.com/RainwayApp/metapod"
-	"github.com/RainwayApp/metapod/windows"
+	"github.com/RainwayApp/metapod/errors"
 )
 
 //export Create
@@ -21,10 +21,10 @@ func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.
 	result, err := metapod.Create(stub, payloadContents)
 
 	if err != nil {
-		return C.int(err.(MetapodError).code)
+		return C.int(err.(errors.MetapodError).ErrCode())
 	}
-	*output = C.CBytes(contents)
-	*outputCount = C.int(len(contents))
+	*output = C.CBytes(result)
+	*outputCount = C.int(len(result))
 
 	return 0
 }
@@ -36,12 +36,11 @@ func Create(buffer unsafe.Pointer, count C.int, payload *C.char, output *unsafe.
 //Use GetErrorCodeMessage to retrieve the error message.
 func Open(pe unsafe.Pointer, count C.int, payload **C.char, payloadCount *C.int) C.int {
 	buffer := C.GoBytes(pe, count)
-	var targetExecutable = windows.TargetExecutable{*portableExecutable}
 
 	rawPayload, err := metapod.Open(buffer)
 
 	if err != nil {
-		return C.int(err.(MetapodError).code)
+		return C.int(err.(errors.MetapodError).ErrCode())
 	} else if rawPayload == nil {
 		return C.int(1050)
 	}
@@ -54,10 +53,13 @@ func Open(pe unsafe.Pointer, count C.int, payload **C.char, payloadCount *C.int)
 //export GetErrorCodeMessage
 //Returns the human readable error message for a given error code.
 func GetErrorCodeMessage(code C.int, text **C.char) C.int {
-	err := metapod.MetapodError{code}
+	err := errors.NewError(int(code))
 
 	errorText := err.Error()
 
 	*text = C.CString(errorText)
 	return C.int(len(errorText))
+}
+
+func main() {
 }

@@ -67,3 +67,7 @@ func NewError(code int) MetapodError {
 func (m MetapodError) Error() string {
 	return errorText(m.err)
 }
+
+func (m MetapodError) ErrCode() int {
+	return m.err
+}
