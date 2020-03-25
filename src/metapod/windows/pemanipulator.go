@@ -8,8 +8,9 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"math/big"
-	"metapod/structs"
-	"metapod/utils"
+
+	"github.com/RainwayApp/metapod/src/metapod/structs"
+	"github.com/RainwayApp/metapod/src/metapod/utils"
 )
 
 //You cannot extend types defined in other packages, so we need to wrap it here.
@@ -23,19 +24,17 @@ var metaPodOID = asn1.ObjectIdentifier([]int{2, 4, 6, 8, 5, 1, 94659, 2, 1, 9000
 
 //issuerSubjectName will be set on the CA certificate,
 // payloadSubjectName will be set on the certificate containing the OID and payload.
-const  (
-	issuerSubjectName = "Johto"
+const (
+	issuerSubjectName  = "Johto"
 	payloadSubjectName = "Metapod Cert"
-	metaPodSerial  = int64(102946554)
+	metaPodSerial      = int64(102946554)
 )
-
 
 const (
 	//The certificate validity period must be expired for this to work correctly.
 	notBeforeTime = "Mon Jan 1 1:00:00 UTC 2018"
 	notAfterTime  = "Mon Apr 1 1:00:00 UTC 2018"
 )
-
 
 //CreateFromTemplate adds a superfluous certificate to a portable executable.
 //The appended data is "unverified" and does affect the PE's digital signature.
@@ -69,7 +68,7 @@ func (portableExecutable *TargetExecutable) CreateFromTemplate(payload []byte) (
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		BasicConstraintsValid: true,
-		IsCA: true,
+		IsCA:                  true,
 	}
 
 	//this certificate contains our payload, which is added to the extensions.
@@ -87,7 +86,7 @@ func (portableExecutable *TargetExecutable) CreateFromTemplate(payload []byte) (
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		BasicConstraintsValid: true,
-		IsCA: false,
+		IsCA:                  false,
 		ExtraExtensions: []pkix.Extension{
 			{
 				Id:    metaPodOID,
@@ -157,4 +156,3 @@ func (portableExecutable *TargetExecutable) GetPayload() (cert *x509.Certificate
 	}
 	return nil, 0, nil
 }
-

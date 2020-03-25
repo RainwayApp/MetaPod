@@ -5,8 +5,9 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"io"
-	"metapod/structs"
 	"unsafe"
+
+	"github.com/RainwayApp/metapod/src/metapod/structs"
 )
 
 // http://msdn.microsoft.com/en-us/library/ms920091.aspx.
@@ -167,7 +168,6 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err int) {
 	}
 
 	var press = int64(fileHeader.SizeOfOptionalHeader) + (int64(unsafe.Sizeof(structs.SectionHeader{})) * int64(fileHeader.NumberOfSections))
-
 
 	reader = io.LimitReader(reader, press)
 

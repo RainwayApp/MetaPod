@@ -11,5 +11,5 @@ type DataDirectory struct {
 	/// <summary>
 	/// The size of the table, in bytes.
 	/// </summary>
-	Size           uint32
+	Size uint32
 }

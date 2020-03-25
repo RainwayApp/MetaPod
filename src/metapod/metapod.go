@@ -3,8 +3,9 @@ package main
 import "C"
 
 import (
-	"metapod/windows"
 	"unsafe"
+
+	"github.com/RainwayApp/metapod/src/metapod/windows"
 )
 
 //export Create
@@ -62,60 +63,60 @@ func GetErrorCodeMessage(code C.int, text **C.char) C.int {
 	case 1050:
 		errorText = "unable to locate payload within input file"
 	case 1043:
-		errorText ="the input file contains no certificates"
+		errorText = "the input file contains no certificates"
 	case 1042:
-		errorText ="failed to marshal ASN.1 structure"
+		errorText = "failed to marshal ASN.1 structure"
 	case 1041:
-		errorText ="failed to create X509Certificate from provided templates"
+		errorText = "failed to create X509Certificate from provided templates"
 	case 1040:
-		errorText ="failed to generate RSA keypair"
+		errorText = "failed to generate RSA keypair"
 	case 1033:
-		errorText ="internal error calculating certificate data offset"
+		errorText = "internal error calculating certificate data offset"
 	case 1032:
-		errorText ="certificate table entry is not at the end of the file"
+		errorText = "certificate table entry is not at the end of the file"
 	case 1031:
-		errorText ="reached EOF calculating end of certificate entry"
+		errorText = "reached EOF calculating end of certificate entry"
 	case 1030:
-		errorText ="portable executable lacks valid certificate data entry"
+		errorText = "portable executable lacks valid certificate data entry"
 	case 1029:
-		errorText ="unable to read IMAGE_SECTION_HEADER. EOF?"
+		errorText = "unable to read IMAGE_SECTION_HEADER. EOF?"
 	case 1028:
-		errorText ="unable to read IMAGE_OPTIONAL_HEADER32"
+		errorText = "unable to read IMAGE_OPTIONAL_HEADER32"
 	case 1027:
-		errorText ="input file must be 32-bit. 64-bit support planned"
+		errorText = "input file must be 32-bit. 64-bit support planned"
 	case 1026:
-		errorText ="input file cannot be a DLL"
+		errorText = "input file cannot be a DLL"
 	case 1025:
-		errorText ="input file is not a valid portable executable"
+		errorText = "input file is not a valid portable executable"
 	case 1024:
-		errorText ="unable to read IMAGE_FILE_HEADER"
+		errorText = "unable to read IMAGE_FILE_HEADER"
 	case 1023:
-		errorText ="unable to locate portable executable file header"
+		errorText = "unable to locate portable executable file header"
 	case 1022:
-		errorText ="portable executable is malformed"
+		errorText = "portable executable is malformed"
 	case 1021:
-		errorText ="reached EOF searching for the portable executable signature"
+		errorText = "reached EOF searching for the portable executable signature"
 	case 1020:
 		errorText = "the length of the input file is less than the PE offset"
 	case 1004:
-		errorText ="incorrect number of bytes reading ASN.1 length"
+		errorText = "incorrect number of bytes reading ASN.1 length"
 	case 1005:
-		errorText ="ASN.1 structure is incorrect"
+		errorText = "ASN.1 structure is incorrect"
 	case 1006:
-		errorText ="unknown certificate type"
+		errorText = "unknown certificate type"
 	case 1007:
-		errorText ="unknown certificate revision"
+		errorText = "unknown certificate revision"
 	case 1008:
-		errorText ="multiple attribute certificates found. unable to proceed."
+		errorText = "multiple attribute certificates found. unable to proceed."
 	case 1009:
-		errorText ="attribute certificate seems malformed"
+		errorText = "attribute certificate seems malformed"
 	default:
-		errorText ="unknown error code."
+		errorText = "unknown error code."
 	}
 
-    *text = C.CString(errorText)
-    return C.int(len(errorText))
+	*text = C.CString(errorText)
+	return C.int(len(errorText))
 }
 
 //TODO 64-bit support
-func main() { }
+func main() {}

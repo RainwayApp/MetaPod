@@ -19,7 +19,6 @@ type SectionHeader struct {
 	Characteristics      DataSectionFlags
 }
 
-
 const (
 	/// <summary>
 	/// Reserved for future use.
