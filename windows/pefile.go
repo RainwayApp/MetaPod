@@ -7,6 +7,7 @@ import (
 	"io"
 	"unsafe"
 
+	"github.com/RainwayApp/metapod/errors"
 	"github.com/RainwayApp/metapod/structs"
 )
 
@@ -19,29 +20,29 @@ const (
 
 //Takes a given input file and creates a Portable Executable wrapper.
 //See the getAttributes documentation for more information.
-func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, int) {
+func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, error) {
 	offset, size, certSizeOffset, err := getAttributes(stub)
-	if err > 0 {
+	if err != nil {
 		return nil, err
 	}
 	attributeCertificates := stub[offset : offset+size]
 	asn1Data, appendedTag, err := processAttributeCertificates(attributeCertificates)
-	if err > 0 {
+	if err != nil {
 		return nil, err
 	}
 
 	var signedData structs.X509Certificate
 	if _, err := asn1.Unmarshal(asn1Data, &signedData); err != nil {
-		return nil, 1010
+		return nil, errors.NewError(1010)
 	}
 
 	der, errm := asn1.Marshal(signedData)
 	if errm != nil {
-		return nil, 1011
+		return nil, errors.NewError(1011)
 	}
 
 	if !bytes.Equal(der, asn1Data) {
-		return nil, 1012
+		return nil, errors.NewError(1012)
 	}
 
 	return &structs.PortableExecutable{
@@ -51,13 +52,13 @@ func GetPortableExecutable(stub []byte) (*structs.PortableExecutable, int) {
 		Asn1Data:        asn1Data,
 		AppendedTag:     appendedTag,
 		X509Certificate: &signedData,
-	}, 0
+	}, nil
 }
 
 // Parses the certificates section of a portable executable, returning the ASN.1 data.
-func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err int) {
+func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err error) {
 	if len(certs) < 8 {
-		err = 1009
+		err = errors.NewError(1009)
 		return
 	}
 
@@ -69,24 +70,24 @@ func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err i
 	certificateType := binary.LittleEndian.Uint16(certs[6:8])
 
 	if int(certificateLength) != len(certs) {
-		err = 1008
+		err = errors.NewError(1008)
 		return
 	}
 
 	if revision != certificateRevision {
-		err = 1007
+		err = errors.NewError(1007)
 		return
 	}
 
 	if certificateType != certificateType {
-		err = 1006
+		err = errors.NewError(1006)
 		return
 	}
 
 	asn1 = certs[8:]
 
 	if len(asn1) < 2 {
-		err = 1005
+		err = errors.NewError(1005)
 		return
 	}
 
@@ -98,11 +99,11 @@ func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err i
 	} else {
 		numBytes := int(asn1[1] & 0x7f)
 		if numBytes == 0 || numBytes > 2 {
-			err = 1004
+			err = errors.NewError(1004)
 			return
 		}
 		if len(asn1) < numBytes+2 {
-			err = 1005
+			err = errors.NewError(1005)
 			return
 		}
 		asn1Length = int(asn1[2])
@@ -122,48 +123,48 @@ func processAttributeCertificates(certs []byte) (asn1, appendedTag []byte, err i
 //Validates an input file is a Portable Executable, meeting the baseline requirements.
 //The input file must be 32x, not a DLL, and a valid EXE.
 //Return  offset information about the certificate table.
-func getAttributes(stub []byte) (offset, size, sizeOffset int, err int) {
+func getAttributes(stub []byte) (offset, size, sizeOffset int, err error) {
 	// offsetOfPEHeaderOffset is the offset in the binary where the PE header is found.
 	const offsetOfPEHeaderOffset = 0x3c
 	if len(stub) < offsetOfPEHeaderOffset+4 {
-		err = 1020
+		err = errors.NewError(1020)
 		return
 	}
 
 	peOffset := int(binary.LittleEndian.Uint32(stub[offsetOfPEHeaderOffset:]))
 	if peOffset < 0 || peOffset+4 < peOffset {
-		err = 1021
+		err = errors.NewError(1021)
 		return
 	}
 	if len(stub) < peOffset+4 {
-		err = 1020
+		err = errors.NewError(1020)
 		return
 	}
 	pe := stub[peOffset:]
 	if !bytes.Equal(pe[:4], []byte{'P', 'E', 0, 0}) {
-		err = 1023
+		err = errors.NewError(1023)
 		return
 	}
 
 	reader := io.Reader(bytes.NewReader(pe[4:]))
 	var fileHeader structs.FileHeader
 	if readError := binary.Read(reader, binary.LittleEndian, &fileHeader); readError != nil {
-		err = 1024
+		err = errors.NewError(1024)
 		return
 	}
 
 	if !fileHeader.IsExe() {
-		err = 1025
+		err = errors.NewError(1025)
 		return
 	}
 
 	if fileHeader.IsDll() {
-		err = 1026
+		err = errors.NewError(1026)
 		return
 	}
 
 	if !fileHeader.Is32Bit() {
-		err = 1027
+		err = errors.NewError(1027)
 		return
 	}
 
@@ -173,7 +174,7 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err int) {
 
 	var optionalHeader structs.OptionalHeader32
 	if readError := binary.Read(reader, binary.LittleEndian, &optionalHeader); readError != nil {
-		err = 1028
+		err = errors.NewError(1028)
 		return
 	}
 
@@ -183,25 +184,25 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err int) {
 
 		var sectionHeader structs.SectionHeader
 		if readError := binary.Read(reader, binary.LittleEndian, &sectionHeader); readError != nil {
-			err = 1029
+			err = errors.NewError(1029)
 			return
 		}
 		sectionHeaders[headerNumber] = sectionHeader
 	}
 
 	if optionalHeader.CertificateTable.VirtualAddress == 0 {
-		err = 1030
+		err = errors.NewError(1030)
 		return
 	}
 
 	var certEntryEnd = optionalHeader.CertificateTable.VirtualAddress + optionalHeader.CertificateTable.Size
 	if certEntryEnd < optionalHeader.CertificateTable.VirtualAddress {
 
-		err = 1031
+		err = errors.NewError(1031)
 		return
 	}
 	if certEntryEnd != uint32(len(stub)) {
-		err = 1032
+		err = errors.NewError(1032)
 		return
 	}
 
@@ -210,7 +211,7 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err int) {
 	sizeOffset = int(peOffset) + 4 + int(unsafe.Sizeof(structs.FileHeader{})) + int(fileHeader.SizeOfOptionalHeader) - 8*(int(optionalHeader.NumberOfRvaAndSizes)-certificateTableIndex) + 4
 
 	if binary.LittleEndian.Uint32(stub[sizeOffset:]) != optionalHeader.CertificateTable.Size {
-		err = 1033
+		err = errors.NewError(1033)
 		return
 	}
 
