@@ -163,18 +163,21 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err error) {
 		return
 	}
 
-	if !fileHeader.Is32Bit() {
-		err = errors.NewError(1027)
-		return
-	}
+	is32Bit := fileHeader.Is32Bit()
 
-	var press = int64(fileHeader.SizeOfOptionalHeader) + (int64(unsafe.Sizeof(structs.SectionHeader{})) * int64(fileHeader.NumberOfSections))
+	press := int64(fileHeader.SizeOfOptionalHeader) + (int64(unsafe.Sizeof(structs.SectionHeader{})) * int64(fileHeader.NumberOfSections))
 
 	reader = io.LimitReader(reader, press)
 
-	var optionalHeader structs.OptionalHeader32
-	if readError := binary.Read(reader, binary.LittleEndian, &optionalHeader); readError != nil {
-		err = errors.NewError(1028)
+	optionalHeaderAttributesFn := getOptionalHeaderAttributes64
+
+	if is32Bit {
+		optionalHeaderAttributesFn = getOptionalHeaderAttributes64
+	}
+
+	certificateAddress, certificateSize, numRvasAndSizes, err := optionalHeaderAttributesFn(reader)
+
+	if err != nil {
 		return
 	}
 
@@ -190,14 +193,13 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err error) {
 		sectionHeaders[headerNumber] = sectionHeader
 	}
 
-	if optionalHeader.CertificateTable.VirtualAddress == 0 {
+	if certificateAddress == 0 {
 		err = errors.NewError(1030)
 		return
 	}
 
-	var certEntryEnd = optionalHeader.CertificateTable.VirtualAddress + optionalHeader.CertificateTable.Size
-	if certEntryEnd < optionalHeader.CertificateTable.VirtualAddress {
-
+	certEntryEnd := certificateAddress + certificateSize
+	if certEntryEnd < certificateAddress {
 		err = errors.NewError(1031)
 		return
 	}
@@ -206,14 +208,42 @@ func getAttributes(stub []byte) (offset, size, sizeOffset int, err error) {
 		return
 	}
 
-	offset = int(optionalHeader.CertificateTable.VirtualAddress)
-	size = int(optionalHeader.CertificateTable.Size)
-	sizeOffset = int(peOffset) + 4 + int(unsafe.Sizeof(structs.FileHeader{})) + int(fileHeader.SizeOfOptionalHeader) - 8*(int(optionalHeader.NumberOfRvaAndSizes)-certificateTableIndex) + 4
+	offset = int(certificateAddress)
+	size = int(certificateSize)
+	sizeOffset = int(peOffset) + 4 + int(unsafe.Sizeof(structs.FileHeader{})) + int(fileHeader.SizeOfOptionalHeader) - 8*(int(numRvasAndSizes)-certificateTableIndex) + 4
 
-	if binary.LittleEndian.Uint32(stub[sizeOffset:]) != optionalHeader.CertificateTable.Size {
+	if binary.LittleEndian.Uint32(stub[sizeOffset:]) != certificateSize {
 		err = errors.NewError(1033)
 		return
 	}
+
+	return
+}
+
+func getOptionalHeaderAttributes32(reader io.Reader) (certificateAddress, certificateSize, numRvasAndSizes uint32, err error) {
+	var optionalHeader structs.OptionalHeader32
+	if readError := binary.Read(reader, binary.LittleEndian, &optionalHeader); readError != nil {
+		err = errors.NewError(1028)
+		return
+	}
+
+	certificateAddress = optionalHeader.CertificateTable.VirtualAddress
+	certificateSize = optionalHeader.CertificateTable.Size
+	numRvasAndSizes = optionalHeader.NumberOfRvaAndSizes
+
+	return
+}
+
+func getOptionalHeaderAttributes64(reader io.Reader) (certificateAddress, certificateSize, numRvasAndSizes uint32, err error) {
+	var optionalHeader structs.OptionalHeader64
+	if readError := binary.Read(reader, binary.LittleEndian, &optionalHeader); readError != nil {
+		err = errors.NewError(1028)
+		return
+	}
+
+	certificateAddress = optionalHeader.CertificateTable.VirtualAddress
+	certificateSize = optionalHeader.CertificateTable.Size
+	numRvasAndSizes = optionalHeader.NumberOfRvaAndSizes
 
 	return
 }
