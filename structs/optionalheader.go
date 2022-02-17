@@ -104,7 +104,6 @@ type OptionalHeader64 struct {
 	SizeOfUninitializedData     uint32
 	AddressOfEntryPoint         uint32
 	BaseOfCode                  uint32
-	BaseOfData                  uint32
 	ImageBase                   uint64
 	SectionAlignment            uint32
 	FileAlignment               uint32
